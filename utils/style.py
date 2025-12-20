@@ -1,159 +1,165 @@
 """
-Contains the CSS for the final, polished dark theme.
-This version introduces gradients and refined styles for a premium,
-"attractive" feel as per user feedback.
+Central repository for all UI/UX styling.
+Uses custom CSS to override Streamlit's default look with a premium 'Cyber-Minimalist' theme.
 """
 
 def get_css() -> str:
     return """
-<style>
-/* --- FONT --- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Code+Pro:wght@400;600&display=swap');
+    <style>
+        /* --- GLOBAL FONTS --- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif;
+            color: #E0E0E0;
+        }
+        
+        /* --- BACKGROUND --- */
+        .stApp {
+            background-color: #0E1117;
+            background-image: radial-gradient(circle at 50% 0%, #111827 0%, #0E1117 80%);
+        }
 
-/* --- ROOT & APP --- */
-:root {
-    --app-bg: #0E1117;
-    --primary-text: #FAFAFA;
-    --secondary-text: #808191;
-    --accent-color: #3B82F6;
-    --accent-color-hover: #2563EB;
-    --container-bg: #11141E;
-    --border-color: #2D303E;
-    --gradient-start: #3B82F6;
-    --gradient-end: #8B5CF6;
-}
+        /* --- HERO SECTION ANIMATIONS --- */
+        @keyframes gradient-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
 
-.stApp {
-    background-color: var(--app-bg);
-    background-image: radial-gradient(circle at top left, #181A2A, var(--app-bg) 30%);
-    color: var(--primary-text);
-    font-family: 'Inter', sans-serif;
-}
+        @keyframes float-up {
+            0% { transform: translateY(10px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
 
-h1, h2, .st-subheader {
-    font-weight: 700;
-    color: var(--primary-text);
-}
-h3 {
-    color: var(--secondary-text);
-    font-weight: 400;
-}
+        .hero-container {
+            text-align: center;
+            padding: 4rem 2rem;
+            margin-bottom: 3rem;
+            background: radial-gradient(circle at center, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 40px rgba(0,0,0,0.2);
+            animation: float-up 1s ease-out;
+        }
 
-/* --- LAYOUT & CONTAINERS --- */
-[data-testid="stHeader"] {
-    background-color: transparent;
-    border-bottom: 1px solid var(--border-color);
-}
-.st-emotion-cache-z5fcl4 > div {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-}
+        .hero-title {
+            font-family: 'Inter', sans-serif;
+            font-size: 5rem !important;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            line-height: 1.1;
+            margin: 0;
+            
+            /* Animated Gradient */
+            background: linear-gradient(to right, #818CF8, #C084FC, #F472B6, #818CF8);
+            background-size: 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient-flow 6s linear infinite;
+            
+            /* Glow */
+            filter: drop-shadow(0 0 20px rgba(129, 140, 248, 0.4));
+        }
 
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: #9CA3AF;
+            font-weight: 500;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-top: 1rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+        }
 
-/* --- TABS --- */
-.stTabs [data-baseweb="tab-list"] {
-	gap: 8px;
-    border-bottom: 2px solid var(--border-color);
-}
-.stTabs [data-baseweb="tab"] {
-    font-weight: 600;
-    color: var(--secondary-text);
-    background-color: transparent;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: all 0.2s ease-in-out;
-}
-.stTabs [aria-selected="true"] {
-    color: var(--accent-color);
-    border-bottom: 2px solid var(--accent-color);
-}
-.stTabs [data-basewab="tab"]:hover {
-    color: var(--accent-color);
-    background-color: #1C1E2D;
-}
+        .hero-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0 5px;
+            backdrop-filter: blur(4px);
+        }
+        
+        .badge-version {
+            background: rgba(99, 102, 241, 0.15);
+            color: #A5B4FC;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
 
-/* --- ACTION CARD --- */
-.action-card {
-    background-color: rgba(28, 30, 45, 0.5);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-top: 1rem;
-    transition: all 0.2s ease-in-out;
-}
-.action-card:hover {
-    border-color: var(--accent-color);
-}
-.action-card-title {
-    font-weight: 600;
-    font-size: 1.1rem;
-    color: var(--primary-text);
-}
-.action-card-desc {
-    font-size: 0.9rem;
-    color: var(--secondary-text);
-    margin-bottom: 1rem;
-}
+        .badge-status {
+            background: rgba(52, 211, 153, 0.15);
+            color: #6EE7B7;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
 
+        /* --- CARDS & UI ELEMENTS --- */
+        div[data-testid="stMetric"], div[data-testid="stExpander"], .action-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        div[data-testid="stMetric"]:hover, .action-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(129, 140, 248, 0.5);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
 
-/* --- BUTTONS --- */
-.stButton>button {
-    border-radius: 6px;
-    padding: 10px 20px;
-    font-weight: 600;
-    font-size: 1rem;
-    border: none;
-    background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
-    color: white;
-    transition: all 0.2s ease-in-out;
-    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.2);
-}
-.stButton>button:hover {
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3);
-    transform: translateY(-2px);
-}
-.stButton>button:active {
-    transform: translateY(0);
-}
+        .action-card { position: relative; overflow: hidden; margin-bottom: 2rem; }
+        .action-card::before { content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+        
+        .action-card-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 10px; }
+        .action-card-desc { font-size: 0.95rem; color: #A1A1AA; line-height: 1.6; }
 
-/* --- CODE EDITOR & BLOCKS --- */
-.ace_editor {
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background-color: var(--container-bg);
-}
-div[data-testid="stCodeBlock"] {
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background-color: #1A1A26;
-}
+        /* Specific Colors */
+        .card-audit::before { background: #818CF8; } .card-audit .action-card-title { color: #818CF8; }
+        .card-simulate::before { background: #22D3EE; } .card-simulate .action-card-title { color: #22D3EE; }
+        .card-refactor::before { background: #A78BFA; } .card-refactor .action-card-title { color: #A78BFA; }
+        .card-optimize::before { background: #34D399; } .card-optimize .action-card-title { color: #34D399; }
+        .card-debug::before { background: #FBBF24; } .card-debug .action-card-title { color: #FBBF24; }
+        .card-transpile::before { background: #60A5FA; } .card-transpile .action-card-title { color: #60A5FA; }
 
-/* --- FILE UPLOADER --- */
-[data-testid="stFileUploader"] {
-    border: 2px dashed var(--border-color);
-    background-color: var(--container-bg);
-    border-radius: 8px;
-}
-[data-testid="stFileUploader"]:hover {
-    border-color: var(--accent-color);
-}
+        /* --- BUTTONS --- */
+        div.stButton > button {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+            color: #FFFFFF;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        div.stButton > button:hover {
+            background: #4F46E5;
+            border-color: #4F46E5;
+            box-shadow: 0 0 25px rgba(79, 70, 229, 0.5);
+            transform: scale(1.02);
+        }
 
-/* --- INFO/WARNING BOXES --- */
-[data-testid="stInfo"], [data-testid="stWarning"] {
-    background-color: transparent;
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--accent-color);
-    border-radius: 8px;
-}
-[data-testid="stWarning"] {
-    border-left-color: #FFC107;
-}
-
-/* --- MERMAID DIAGRAM TWEAKS --- */
-/* Hide the default toolbar (zoom, pan buttons) from the mermaid component */
-[data-testid="stMermaid"] > div[style*="position: relative;"] > div[style*="position: absolute;"] {
-    display: none !important;
-}
-
-</style>
-"""
+        /* --- TABS --- */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 16px;
+        }
+        .stTabs [data-baseweb="tab"] { color: #9CA3AF; padding: 10px 16px; border-radius: 10px; }
+        .stTabs [aria-selected="true"] { background-color: #4F46E5 !important; color: white !important; font-weight: 700; }
+        
+        /* --- SIDEBAR --- */
+        section[data-testid="stSidebar"] { background-color: #05080F; }
+        
+        /* --- CODE --- */
+        code { font-family: 'JetBrains Mono', monospace !important; }
+    </style>
+    """
