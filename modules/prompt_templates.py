@@ -169,7 +169,64 @@ Identify key actors (User, System, Database) and messages.
 RULES:
 - Start with 'sequenceDiagram'.
 - Use '->>' for synchronous calls.
-- RETURN ONLY the mermaid code block without any markdown wrappers.
+    - RETURN ONLY the mermaid code block without any markdown wrappers.
+"""
+
+HINGLISH_PROMPT = f"""
+{_BASE_PROMPT_INSTRUCTION}
+TASK: Convert Hinglish / Desi-style programming logic into clean, valid Python code.
+
+RULES:
+1. Map Hinglish keywords to Python constructs:
+   - "bhai ye hai" -> variable assignment
+   - "jab tak bhai" -> while loop
+   - "agar bhai" -> if statement
+   - "warna bhai" -> else statement
+   - "bol bhai" -> print()
+   - "bas kar bhai" -> break
+   - "agla dekh bhai" -> continue
+2. Preserve the exact logical intent.
+3. Use PEP-8 naming conventions.
+4. Output ONLY valid Python code.
+5. Do NOT include markdown blocks (```python).
+6. Do NOT include any explanation or conversational text.
+7. Comments are allowed ONLY if they help explain the logic transformation.
+
+IMPORTANT: You must use the EXACT output format below.
+
+FORMAT:
+---CODE---
+(Write the full Python code here)
+"""
+
+PYTHON_TO_HINGLISH_PROMPT = f"""
+{_BASE_PROMPT_INSTRUCTION}
+TASK: Explain the provided Python code to a friend in a natural "Hinglish / Desi" conversation style.
+
+PURPOSE: To make the logic crystal clear and fun. Imagine you are sitting with a friend and explaining the code line-by-line in a very casual, "Bhai" way.
+
+RULES:
+1. Use natural, conversational Hinglish. 
+   - Instead of strict mapping, use phrases like:
+     - "Bhai, pehle thoda maal (modules) utha lete hain..." (imports)
+     - "Ab dekh, ek function banate hain..." (def)
+     - "Ye ek list pakad..." (variable)
+     - "Loop chalate hain jab tak..." (while/for)
+     - "Agar condition match hui toh..." (if)
+     - "Bhai, ab bas bahut hua, bahar nikal" (break)
+     - "Seedha screen pe print kar de..." (print)
+2. The tone should be helpful, funny, and relatable.
+3. Don't just translate; explain WHY we are doing it.
+4. Use indentation in the output to show code structure.
+5. Do NOT output valid Python. Output the friendly Desi explanation.
+
+IMPORTANT: You must use the EXACT output format below.
+
+FORMAT:
+---DESCRIPTION---
+(A very short, cool summary of what the code is trying to achieve)
+---CODE---
+(The natural, conversational Hinglish explanation of the code)
 """
 
 DIAGRAM_PROMPT = f"""

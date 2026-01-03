@@ -161,5 +161,22 @@ def get_css() -> str:
         
         /* --- CODE --- */
         code { font-family: 'JetBrains Mono', monospace !important; }
+        /* --- DESI LOGIC STYLE (CYBER DARK) --- */
+        .desi-box {
+            background: rgba(255, 255, 255, 0.03);
+            color: #E2E8F0;
+            font-family: 'Inter', sans-serif;
+            font-size: 1.05rem;
+            line-height: 1.7;
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid rgba(249, 115, 22, 0.3); /* Subtle Orange Border */
+            border-left: 6px solid #F97316; /* Neon Orange Accent */
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            margin-top: 1rem;
+            white-space: pre-wrap;
+        }
+        .desi-box strong { color: #FDBA74; font-weight: 700; } /* Highlight Color */
     </style>
     """
