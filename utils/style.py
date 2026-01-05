@@ -152,7 +152,13 @@ def get_css() -> str:
             background: rgba(0,0,0,0.3);
             padding: 8px;
             border-radius: 16px;
+            /* Ensure smooth scrolling */
+            scroll-behavior: smooth;
+            /* Hide scrollbar by default for cleaner look */
+            scrollbar-width: none;
         }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar { display: none; }
+        
         .stTabs [data-baseweb="tab"] { color: #9CA3AF; padding: 10px 16px; border-radius: 10px; }
         .stTabs [aria-selected="true"] { background-color: #4F46E5 !important; color: white !important; font-weight: 700; }
         

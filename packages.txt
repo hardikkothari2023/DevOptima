@@ -1,3 +1,0 @@
-# For installing system-level dependencies on Streamlit Cloud (e.g., build-essential, ffmpeg).
-# This project currently has no non-Python dependencies required for deployment.
-# This file is included as a standard practice for Streamlit apps.

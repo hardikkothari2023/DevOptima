@@ -172,31 +172,15 @@ RULES:
     - RETURN ONLY the mermaid code block without any markdown wrappers.
 """
 
-HINGLISH_PROMPT = f"""
+
+DIAGRAM_PROMPT = f"""
 {_BASE_PROMPT_INSTRUCTION}
-TASK: Convert Hinglish / Desi-style programming logic into clean, valid Python code.
-
-RULES:
-1. Map Hinglish keywords to Python constructs:
-   - "bhai ye hai" -> variable assignment
-   - "jab tak bhai" -> while loop
-   - "agar bhai" -> if statement
-   - "warna bhai" -> else statement
-   - "bol bhai" -> print()
-   - "bas kar bhai" -> break
-   - "agla dekh bhai" -> continue
-2. Preserve the exact logical intent.
-3. Use PEP-8 naming conventions.
-4. Output ONLY valid Python code.
-5. Do NOT include markdown blocks (```python).
-6. Do NOT include any explanation or conversational text.
-7. Comments are allowed ONLY if they help explain the logic transformation.
-
-IMPORTANT: You must use the EXACT output format below.
-
-FORMAT:
----CODE---
-(Write the full Python code here)
+TASK: Generate a VERY SIMPLE Mermaid.js flowchart (graph TD).
+RULES: 
+- Use ONLY basic nodes: id[Text] or id(Text).
+- Use ONLY simple arrows: -->.
+- DO NOT use subgraphs or complex styling.
+- RETURN ONLY the mermaid code block without any markdown wrappers.
 """
 
 PYTHON_TO_HINGLISH_PROMPT = f"""
@@ -229,12 +213,38 @@ FORMAT:
 (The natural, conversational Hinglish explanation of the code)
 """
 
-DIAGRAM_PROMPT = f"""
+GHOST_TEXT_PROMPT = f"""
 {_BASE_PROMPT_INSTRUCTION}
-TASK: Generate a VERY SIMPLE Mermaid.js flowchart (graph TD).
-RULES: 
-- Use ONLY basic nodes: id[Text] or id(Text).
-- Use ONLY simple arrows: -->.
-- DO NOT use subgraphs or complex styling.
-- RETURN ONLY the mermaid code block without any markdown wrappers.
+TASK: Predict the NEXT logical line or block of code.
+
+CONTEXT:
+{{context_code}}
+
+INSTRUCTIONS:
+1. Return ONLY the next logical code snippet.
+2. Do NOT wrap in markdown.
+3. Do NOT provide explanations.
+4. If inside a function/loop, complete the logic.
+"""
+
+ASK_PROMPT = f"""
+You are a Principal Software Architect acting as a Code Reviewer.
+Your goal is to answer the user's question based STRICTLY on the provided code.
+
+CONTEXT (USER CODE):
+```python
+{{user_code}}
+```
+
+USER QUESTION:
+{{user_question}}
+
+RULES:
+1. Answer ONLY based on the code provided above.
+2. If the answer is not in the code, explicitly state: "This is not visible in the provided code."
+3. Do NOT rewrite or refactor the code unless explicitly asked.
+4. Be concise, technical, and precise. Avoid fluff.
+5. Explain "Why" and "How" logic works.
+
+Response:
 """

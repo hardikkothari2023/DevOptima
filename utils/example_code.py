@@ -1,50 +1,39 @@
 """
-Contains a default example of Python code to be used in the application.
-
-This provides a quick way for users to test the functionality without
-having to provide their own code immediately. The chosen example is
-intentionally inefficient and poorly styled to better showcase the
-Refactor and Optimize features.
+Default example code to be loaded into the editor.
+Designed to demonstrate:
+1. Simulation (State changes in loop)
+2. Refactoring (Poor style)
+3. Optimization (Inefficient string concat)
 """
 
-EXAMPLE_CODE = """
-import time
-
-# Function to find common elements between two lists, written inefficiently
-def find_common_elements(list1, list2):
-    common_elements = []
-    for item1 in list1:
-        for item2 in list2:
-            if item1 == item2:
-                if item1 not in common_elements:
-                    common_elements.append(item1)
-    return common_elements
-
-# A simple class example
-class DataProcessor:
-    def __init__(self, data):
-        self.data = data
+EXAMPLE_CODE = """def process_orders(orders_list):
+    # This function is messy and needs refactoring
+    total = 0
+    receipts = []
     
-    def process(self):
-        # Pretend to do some processing
-        print("Processing data...")
-        time.sleep(1)
-        # A simple transformation
-        transformed_data = [x * 2 for x in self.data]
-        return transformed_data
+    for o in orders_list:
+        if o['price'] > 100:
+            # Expensive item
+            disc = o['price'] * 0.9
+        else:
+            disc = o['price']
+            
+        total = total + disc
+        
+        # Inefficient string concatenation
+        r_id = "REC-" + str(o['id']) + "-" + str(int(disc))
+        receipts.append(r_id)
+        
+    return total, receipts
 
-if __name__ == '__main__':
-    list_a = [i for i in range(1000)]
-    list_b = [i for i in range(500, 1500)]
-    
-    start_time = time.time()
-    result = find_common_elements(list_a, list_b)
-    end_time = time.time()
-    
-    print(f"Found {len(result)} common elements.")
-    print(f"Inefficient execution time: {end_time - start_time:.4f} seconds")
+# Test Data
+data = [
+    {'id': 101, 'price': 50},
+    {'id': 102, 'price': 150},
+    {'id': 103, 'price': 20}
+]
 
-    processor = DataProcessor([1, 2, 3, 4, 5])
-    processed = processor.process()
-    print("Processed data:", processed)
+t, r = process_orders(data)
+print(f"Final Total: {t}")
+print(f"Receipts: {r}")
 """

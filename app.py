@@ -10,11 +10,24 @@ from datetime import datetime
 from radon.complexity import cc_visit
 from radon.metrics import mi_visit, h_visit
 from radon.raw import analyze
-from streamlit_code_diff import st_code_diff
+# Check if streamlit_code_diff is available in the original environment
+try:
+    from streamlit_code_diff import st_code_diff
+except ImportError:
+    # Fallback if the user's environment didn't have it initially (though it was in the first read)
+    def st_code_diff(old_string, new_string, language='python'):
+        st.subheader("Original Code")
+        st.code(old_string, language=language)
+        st.subheader("Modified Code")
+        st.code(new_string, language=language)
 
 # Import local modules
 from modules.llm_handler import call_groq_api
-from modules.prompt_templates import REFACTOR_PROMPT, OPTIMIZE_PROMPT, TRANSPILE_PROMPT, DEBUG_PROMPT, AUDIT_PROMPT, BATCH_FIX_PROMPT, SIMULATOR_PROMPT, HINGLISH_PROMPT, PYTHON_TO_HINGLISH_PROMPT
+from modules.prompt_templates import (
+    REFACTOR_PROMPT, OPTIMIZE_PROMPT, TRANSPILE_PROMPT, DEBUG_PROMPT, 
+    AUDIT_PROMPT, BATCH_FIX_PROMPT, SIMULATOR_PROMPT, PYTHON_TO_HINGLISH_PROMPT,
+    ASK_PROMPT
+)
 from modules.diagram_gen import generate_mermaid_diagram, render_mermaid_diagram, generate_tree_data, render_tree_diagram
 from modules.code_parser import validate_python_code
 from utils.example_code import EXAMPLE_CODE
@@ -71,7 +84,7 @@ def parse_custom_response(response_str: str) -> dict:
         try:
             parts = text.split("---SECURITY_SCORE---")[1].split("---DEBT_GRADE---")
             data["security_score"] = parts[0].strip()
-            parts2 = parts[1].split("---ANALYSIS---")
+            parts2 = parts[1].split("---DEBT_GRADE---")[1].split("---ANALYSIS---")
             data["debt_grade"] = parts2[0].strip()
             parts3 = parts2[1].split("---VERDICT---")
             data["analysis"], data["verdict"] = parts3[0].strip(), parts3[1].strip()
@@ -100,6 +113,8 @@ with st.sidebar:
 
 # --- SESSION STATE ---
 if 'current_code' not in st.session_state: st.session_state.current_code = EXAMPLE_CODE
+if 'ask_chat_history' not in st.session_state: st.session_state.ask_chat_history = []
+
 for key in ['refactor_output', 'optimize_output', 'debug_output', 'transpile_output', 'audit_output', 'fix_output', 'simulator_output', 'hinglish_output']:
     if key not in st.session_state: st.session_state[key] = None
 
@@ -125,7 +140,8 @@ with col1:
 
 with col2:
     st.markdown("### ⚡ AI Directives")
-    tabs = st.tabs(["🛡️ AUDIT", "🔮 SIMULATE", "🛠️ REFACTOR", "🚀 OPTIMIZE", "🐞 DEBUG", "🌐 TRANSPILE", "🗺️ VISUALIZE", "🧠 HINGLISH"])
+    
+    tabs = st.tabs(["🛡️ AUDIT", "🔮 SIMULATE", "🛠️ REFACTOR", "🚀 OPTIMIZE", "🐞 DEBUG", "🌐 TRANSPILE", "🗺️ VISUALIZE", "🇮🇳 LINGUISTIC", "💬 ASK"])
 
     with tabs[0]: # Audit
         st.markdown('<div class="action-card card-audit"><div class="action-card-title">🛡️ Code Quality Audit</div><div class="action-card-desc">Deep-scan architecture for security risks, maintainability issues, and technical debt. Generates a comprehensive engineering verdict.</div></div>', unsafe_allow_html=True)
@@ -247,46 +263,49 @@ with col2:
                         mermaid_code = generate_mermaid_diagram(st.session_state.current_code, d_type)
                         render_mermaid_diagram(mermaid_code)
             else: st.error(err)
+            
+    with tabs[7]: # Linguistic
+        st.markdown('<div class="action-card card-debug"><div class="action-card-title">🇮🇳 Linguistic Walkthrough</div><div class="action-card-desc">Generate a context-aware explanation in vernacular Hinglish for better conceptual clarity.</div></div>', unsafe_allow_html=True)
+        
+        # Slider for Tone Selection
+        tone_style = st.select_slider("Select Explanation Style:", options=["Professional (English)", "Conversational (Hinglish)", "Desi (Bhai Mode)"], value="Desi (Bhai Mode)")
+        
+        if st.button("Generate Walkthrough", key="hinglish", use_container_width=True):
+            if not (err := validate_python_code(st.session_state.current_code)):
+                with st.spinner("Generating Walkthrough..."):
+                    # Dynamic Prompt Selection
+                    if tone_style == "Professional (English)":
+                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT.replace("Hinglish / Desi", "Professional Technical English").replace("Bhai", "Engineer").replace("Desi", "Formal")
+                    elif tone_style == "Conversational (Hinglish)":
+                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT.replace("Desi", "Conversational").replace("Bhai", "Friend")
+                    else:
+                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT # Default Desi
 
-    with tabs[7]: # Hinglish
-        st.markdown('<div class="action-card card-transpile"><div class="action-card-title">🧠 Desi Logic Studio</div><div class="action-card-desc">The ultimate bridge between Hinglish and Python. Choose your mode below.</div></div>', unsafe_allow_html=True)
+                    st.session_state.hinglish_output = parse_custom_response(call_groq_api(custom_prompt, st.session_state.current_code))
+            else: st.error(err)
+        if st.session_state.hinglish_output:
+            st.info(st.session_state.hinglish_output["description"])
+            st.markdown(f'<div class="desi-box">{st.session_state.hinglish_output["code"]}</div>', unsafe_allow_html=True)
+
+    with tabs[8]: # ASK
+        st.markdown('<div class="action-card card-refactor"><div class="action-card-title">💬 ASK — Code Reasoning</div><div class="action-card-desc">Ask natural language questions about your code. Read-only context-aware analysis.</div></div>', unsafe_allow_html=True)
         
-        mode = st.radio("Select Mode:", ["Hinglish ⮕ Python", "Python ⮕ Hinglish"], horizontal=True)
-        
-        if mode == "Hinglish ⮕ Python":
-            st.info("💡 Write logic in Hinglish (e.g., 'bol bhai') and convert it to real Python code.")
-            hinglish_input = st.text_area("Enter Hinglish Logic:", height=200, placeholder="Example:\nbhai ye hai a = 0\njab tak bhai (a < 10)\n  bol bhai a\n  a = a + 1", key="h_input")
-            if st.button("Generate Python Code", key="hinglish_gen", use_container_width=True):
-                if hinglish_input.strip():
-                    with st.spinner("Translating Desi Logic..."):
-                        st.session_state.hinglish_output = parse_custom_response(call_groq_api(HINGLISH_PROMPT, hinglish_input))
-                else:
-                    st.warning("Please enter some Hinglish logic first!")
-            
-            if st.session_state.hinglish_output and mode == "Hinglish ⮕ Python":
-                if st.session_state.hinglish_output.get("code"):
-                    st.markdown("### 🐍 Generated Python")
-                    err = validate_python_code(st.session_state.hinglish_output["code"])
-                    if err:
-                        st.error(f"Generated code has errors: {err}")
-                    st.code(st.session_state.hinglish_output["code"], language="python")
-                    st.download_button(
-                        label="Download Python Code",
-                        data=st.session_state.hinglish_output["code"],
-                        file_name="desi_logic.py",
-                        mime="text/x-python",
-                        use_container_width=True
-                    )
-        
-        else: # Python ⮕ Hinglish
-            st.info("💡 Convert the Python code in your Workspace into funny and educational Hinglish logic.")
-            if st.button("Explain Workspace in Hinglish", key="python_to_h", use_container_width=True):
-                with st.spinner("Decoding to Desi style..."):
-                    st.session_state.hinglish_output = parse_custom_response(call_groq_api(PYTHON_TO_HINGLISH_PROMPT, st.session_state.current_code))
-            
-            if st.session_state.hinglish_output and mode == "Python ⮕ Hinglish":
-                if st.session_state.hinglish_output.get("description"):
-                    st.success(st.session_state.hinglish_output["description"])
-                if st.session_state.hinglish_output.get("code"):
-                    st.markdown("### 🧠 Desi Translation")
-                    st.markdown(f'<div class="desi-box">{st.session_state.hinglish_output["code"]}</div>', unsafe_allow_html=True)
+        # Display chat history
+        for message in st.session_state.ask_chat_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # Chat input
+        if prompt := st.chat_input("Ask a question about your code..."):
+            # Display user message
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            st.session_state.ask_chat_history.append({"role": "user", "content": prompt})
+
+            # Generate response
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    formatted_prompt = ASK_PROMPT.replace("{user_code}", st.session_state.current_code).replace("{user_question}", prompt)
+                    response = call_groq_api(formatted_prompt, st.session_state.current_code)
+                    st.markdown(response)
+            st.session_state.ask_chat_history.append({"role": "assistant", "content": response})
