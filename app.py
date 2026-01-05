@@ -84,7 +84,7 @@ def parse_custom_response(response_str: str) -> dict:
         try:
             parts = text.split("---SECURITY_SCORE---")[1].split("---DEBT_GRADE---")
             data["security_score"] = parts[0].strip()
-            parts2 = parts[1].split("---DEBT_GRADE---")[1].split("---ANALYSIS---")
+            parts2 = parts[1].split("---ANALYSIS---")
             data["debt_grade"] = parts2[0].strip()
             parts3 = parts2[1].split("---VERDICT---")
             data["analysis"], data["verdict"] = parts3[0].strip(), parts3[1].strip()
