@@ -34,7 +34,7 @@ def get_groq_client() -> Groq | None:
     return Groq(api_key=api_key) if api_key else None
 
 # --- CORE LLM INTERACTION ---
-def call_groq_api(system_prompt: str, user_code: str) -> str:
+def call_groq_api(system_prompt: str, user_code: str, model_name: str = GROQ_MODEL) -> str:
     """
     Sends a request to the Groq API with retry logic.
     """
@@ -47,7 +47,7 @@ def call_groq_api(system_prompt: str, user_code: str) -> str:
     for attempt in range(MAX_RETRIES):
         try:
             chat_completion = client.chat.completions.create(
-                model=GROQ_MODEL,
+                model=model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},

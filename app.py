@@ -23,6 +23,7 @@ except ImportError:
 
 # Import local modules
 from modules.llm_handler import call_groq_api
+from modules.agent_controller import autonomous_fix_loop
 from modules.prompt_templates import (
     REFACTOR_PROMPT, OPTIMIZE_PROMPT, TRANSPILE_PROMPT, DEBUG_PROMPT, 
     AUDIT_PROMPT, BATCH_FIX_PROMPT, SIMULATOR_PROMPT, PYTHON_TO_HINGLISH_PROMPT,
@@ -109,13 +110,27 @@ with st.sidebar:
     st.title("DevOptima")
     st.markdown("---")
     st.info(get_system_info())
+    
+    # Model Selector
+    model_options = {
+        "llama-3.3-70b-versatile": "Llama 3.3 70B (Intelligent)", 
+        "llama-3.1-8b-instant": "Llama 3.1 8B (Fast)"
+    }
+    selected_model = st.selectbox(
+        "AI Model", 
+        options=list(model_options.keys()), 
+        format_func=lambda x: model_options[x],
+        index=0
+    )
     st.caption(f"v2.0.0 | {datetime.now().strftime('%Y-%m-%d')}")
 
 # --- SESSION STATE ---
 if 'current_code' not in st.session_state: st.session_state.current_code = EXAMPLE_CODE
+if 'last_known_code' not in st.session_state: st.session_state.last_known_code = EXAMPLE_CODE
 if 'ask_chat_history' not in st.session_state: st.session_state.ask_chat_history = []
 
-for key in ['refactor_output', 'optimize_output', 'debug_output', 'transpile_output', 'audit_output', 'fix_output', 'simulator_output', 'hinglish_output']:
+OUTPUT_KEYS = ['refactor_output', 'optimize_output', 'debug_output', 'transpile_output', 'audit_output', 'fix_output', 'simulator_output', 'hinglish_output']
+for key in OUTPUT_KEYS:
     if key not in st.session_state: st.session_state[key] = None
 
 # --- UI HEADER ---
@@ -136,12 +151,25 @@ with col1:
     st.markdown("### 💻 Code Workspace")
     if uploaded_file := st.file_uploader("Upload Python Source", type="py"):
         st.session_state.current_code = uploaded_file.getvalue().decode("utf-8")
-    st.session_state.current_code = st_ace(value=st.session_state.current_code, language="python", theme="vibrant_ink", keybinding="vscode", font_size=14, height=500, wrap=True)
+    
+    # Editor
+    code_input = st_ace(value=st.session_state.current_code, language="python", theme="vibrant_ink", keybinding="vscode", font_size=14, height=500, wrap=True)
+    
+    # Stale Result Detection
+    if code_input != st.session_state.last_known_code:
+        st.session_state.last_known_code = code_input
+        st.session_state.current_code = code_input
+        # Clear all AI outputs since the code has changed
+        for key in OUTPUT_KEYS:
+            st.session_state[key] = None
+        st.rerun() # Force a rerun to update the UI immediately
+    
+    st.session_state.current_code = code_input
 
 with col2:
     st.markdown("### ⚡ AI Directives")
     
-    tabs = st.tabs(["🛡️ AUDIT", "🔮 SIMULATE", "🛠️ REFACTOR", "🚀 OPTIMIZE", "🐞 DEBUG", "🌐 TRANSPILE", "🗺️ VISUALIZE", "🇮🇳 LINGUISTIC", "💬 ASK"])
+    tabs = st.tabs(["🛡️ AUDIT", "🗺️ VISUALIZE", "💬 ASK", "🇮🇳 LINGUISTIC", "🔮 SIMULATE", "🐞 DEBUG", "🛠️ REFACTOR", "🚀 OPTIMIZE", "🌐 TRANSPILE"])
 
     with tabs[0]: # Audit
         st.markdown('<div class="action-card card-audit"><div class="action-card-title">🛡️ Code Quality Audit</div><div class="action-card-desc">Deep-scan architecture for security risks, maintainability issues, and technical debt. Generates a comprehensive engineering verdict.</div></div>', unsafe_allow_html=True)
@@ -174,80 +202,12 @@ with col2:
                 if f_opt: fixes.append("- Optimize logic.")
                 if fixes:
                     with st.spinner("Applying fixes..."):
-                        st.session_state.fix_output = parse_custom_response(call_groq_api(BATCH_FIX_PROMPT.replace("{selected_fixes}", "\n".join(fixes)), st.session_state.current_code))
+                        st.session_state.fix_output = parse_custom_response(call_groq_api(BATCH_FIX_PROMPT.replace("{selected_fixes}", "\n".join(fixes)), st.session_state.current_code, model_name=selected_model))
             if st.session_state.fix_output:
                 st.info(st.session_state.fix_output["description"])
                 st_code_diff(old_string=st.session_state.current_code, new_string=st.session_state.fix_output["code"], language='python')
 
-    with tabs[1]: # Simulate
-        st.markdown('<div class="action-card card-simulate"><div class="action-card-title">🔮 Logic Simulation</div><div class="action-card-desc">Execute code in a virtual environment to visualize data flow and state changes without side effects. High-fidelity mental trace.</div></div>', unsafe_allow_html=True)
-        chaos = st.checkbox("🔥 Chaos Mode (Test Edge Cases)", False)
-        if st.button("Run Simulation", key="sim", use_container_width=True):
-            if not (err := validate_python_code(st.session_state.current_code)):
-                prompt = SIMULATOR_PROMPT.replace("SCENARIO:", "SCENARIO: CHAOS_MODE. Find edge cases.") if chaos else SIMULATOR_PROMPT
-                with st.spinner("Simulating execution..."):
-                    st.session_state.simulator_output = parse_custom_response(call_groq_api(prompt, st.session_state.current_code))
-            else: st.error(err)
-        if st.session_state.simulator_output and st.session_state.simulator_output.get("simulation"):
-            sim = st.session_state.simulator_output["simulation"]
-            st.caption(f"Scenario: {sim.get('scenario')} | {sim.get('complexity_note')}")
-            for s in sim.get("trace", []):
-                with st.container():
-                    c1, c2 = st.columns([1, 4])
-                    c1.markdown(f"**Step {s.get('step')}**")
-                    c2.code(s.get('line'), language='python')
-                    st.caption(f"Action: {s.get('action')} | State: {s.get('variables')}")
-                    st.divider()
-            st.success(sim.get("outcome"))
-
-    with tabs[2]: # Refactor
-        st.markdown('<div class="action-card card-refactor"><div class="action-card-title">🛠️ Code Refactoring</div><div class="action-card-desc">Modernize code for PEP-8 compliance. Inject type hints, Google-style docstrings, and improve modularity.</div></div>', unsafe_allow_html=True)
-        if st.button("Execute Refactor", key="refactor", use_container_width=True):
-            if not (err := validate_python_code(st.session_state.current_code)):
-                with st.spinner("Refactoring..."):
-                    st.session_state.refactor_output = parse_custom_response(call_groq_api(REFACTOR_PROMPT, st.session_state.current_code))
-            else: st.error(err)
-        if st.session_state.refactor_output:
-            st.info(st.session_state.refactor_output["description"])
-            st_code_diff(old_string=st.session_state.current_code, new_string=st.session_state.refactor_output["code"], language='python')
-
-    with tabs[3]: # Optimize
-        st.markdown('<div class="action-card card-optimize"><div class="action-card-title">🚀 Performance Optimization</div><div class="action-card-desc">Identify algorithmic bottlenecks. Replace inefficient loops with high-performance vectorization or better Big-O alternatives.</div></div>', unsafe_allow_html=True)
-        if st.button("Execute Optimize", key="optimize", use_container_width=True):
-            if not (err := validate_python_code(st.session_state.current_code)):
-                with st.spinner("Optimizing..."):
-                    st.session_state.optimize_output = parse_custom_response(call_groq_api(OPTIMIZE_PROMPT, st.session_state.current_code))
-            else: st.error(err)
-        if st.session_state.optimize_output:
-            st.info(st.session_state.optimize_output["description"])
-            st_code_diff(old_string=st.session_state.current_code, new_string=st.session_state.optimize_output["code"], language='python')
-
-    with tabs[4]: # Debug
-        st.markdown('<div class="action-card card-debug"><div class="action-card-title">🐞 Intelligent Debugger</div><div class="action-card-desc">Heal broken code instantly. Paste an error log or let the AI scan for hidden logic bugs and security leaks.</div></div>', unsafe_allow_html=True)
-        log = st.text_area("Paste Error/Traceback", height=100)
-        if st.button("Run Debug Scan", key="debug", use_container_width=True):
-            if not (err := validate_python_code(st.session_state.current_code)):
-                with st.spinner("Diagnosing..."):
-                    st.session_state.debug_output = parse_custom_response(call_groq_api(DEBUG_PROMPT.replace("{error_log}", log if log else "None"), st.session_state.current_code))
-            else: st.error(err)
-        if st.session_state.debug_output:
-            st.warning(st.session_state.debug_output["description"])
-            if st.session_state.debug_output["code"]:
-                st_code_diff(old_string=st.session_state.current_code, new_string=st.session_state.debug_output["code"], language='python')
-
-    with tabs[5]: # Transpile
-        st.markdown('<div class="action-card card-transpile"><div class="action-card-title">🌐 Code Transpilation</div><div class="action-card-desc">Seamlessly translate Python to production languages like Rust, Go, or TypeScript while maintaining logic parity.</div></div>', unsafe_allow_html=True)
-        lang = st.selectbox("Target Language", ["Rust", "JavaScript", "Go", "C++", "Java", "TypeScript", "Swift", "Kotlin"])
-        if st.button(f"Transpile to {lang}", key="trans", use_container_width=True):
-            if not (err := validate_python_code(st.session_state.current_code)):
-                with st.spinner("Transpiling..."):
-                    st.session_state.transpile_output = parse_custom_response(call_groq_api(f"TARGET LANGUAGE: {lang}\n\n{TRANSPILE_PROMPT}", st.session_state.current_code))
-            else: st.error(err)
-        if st.session_state.transpile_output:
-            if st.session_state.transpile_output["warning"]: st.warning(st.session_state.transpile_output["warning"])
-            st.code(st.session_state.transpile_output["code"], language=lang.lower())
-
-    with tabs[6]: # Visualize
+    with tabs[1]: # Visualize
         st.markdown('<div class="action-card card-simulate"><div class="action-card-title">🗺️ Architecture Visualization</div><div class="action-card-desc">Generate instant flowcharts, sequence diagrams, and interactive class maps from your code.</div></div>', unsafe_allow_html=True)
         
         viz_type = st.radio("Select View:", ["Flowchart", "Sequence Diagram", "Interactive Code Map"], horizontal=True)
@@ -256,38 +216,15 @@ with col2:
             if not (err := validate_python_code(st.session_state.current_code)):
                 with st.spinner("Analyzing architecture..."):
                     if viz_type == "Interactive Code Map":
-                        tree_data = generate_tree_data(st.session_state.current_code)
+                        tree_data = generate_tree_data(st.session_state.current_code, model_name=selected_model)
                         render_tree_diagram(tree_data)
                     else:
                         d_type = "sequence" if viz_type == "Sequence Diagram" else "flowchart"
-                        mermaid_code = generate_mermaid_diagram(st.session_state.current_code, d_type)
+                        mermaid_code = generate_mermaid_diagram(st.session_state.current_code, d_type, model_name=selected_model)
                         render_mermaid_diagram(mermaid_code)
             else: st.error(err)
-            
-    with tabs[7]: # Linguistic
-        st.markdown('<div class="action-card card-debug"><div class="action-card-title">🇮🇳 Linguistic Walkthrough</div><div class="action-card-desc">Generate a context-aware explanation in vernacular Hinglish for better conceptual clarity.</div></div>', unsafe_allow_html=True)
-        
-        # Slider for Tone Selection
-        tone_style = st.select_slider("Select Explanation Style:", options=["Professional (English)", "Conversational (Hinglish)", "Desi (Bhai Mode)"], value="Desi (Bhai Mode)")
-        
-        if st.button("Generate Walkthrough", key="hinglish", use_container_width=True):
-            if not (err := validate_python_code(st.session_state.current_code)):
-                with st.spinner("Generating Walkthrough..."):
-                    # Dynamic Prompt Selection
-                    if tone_style == "Professional (English)":
-                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT.replace("Hinglish / Desi", "Professional Technical English").replace("Bhai", "Engineer").replace("Desi", "Formal")
-                    elif tone_style == "Conversational (Hinglish)":
-                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT.replace("Desi", "Conversational").replace("Bhai", "Friend")
-                    else:
-                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT # Default Desi
 
-                    st.session_state.hinglish_output = parse_custom_response(call_groq_api(custom_prompt, st.session_state.current_code))
-            else: st.error(err)
-        if st.session_state.hinglish_output:
-            st.info(st.session_state.hinglish_output["description"])
-            st.markdown(f'<div class="desi-box">{st.session_state.hinglish_output["code"]}</div>', unsafe_allow_html=True)
-
-    with tabs[8]: # ASK
+    with tabs[2]: # ASK
         st.markdown('<div class="action-card card-refactor"><div class="action-card-title">💬 ASK — Code Reasoning</div><div class="action-card-desc">Ask natural language questions about your code. Read-only context-aware analysis.</div></div>', unsafe_allow_html=True)
         
         # Display chat history
@@ -306,6 +243,110 @@ with col2:
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
                     formatted_prompt = ASK_PROMPT.replace("{user_code}", st.session_state.current_code).replace("{user_question}", prompt)
-                    response = call_groq_api(formatted_prompt, st.session_state.current_code)
+                    response = call_groq_api(formatted_prompt, st.session_state.current_code, model_name=selected_model)
                     st.markdown(response)
             st.session_state.ask_chat_history.append({"role": "assistant", "content": response})
+
+    with tabs[3]: # Linguistic
+        st.markdown('<div class="action-card card-debug"><div class="action-card-title">🇮🇳 Linguistic Walkthrough</div><div class="action-card-desc">Generate a context-aware explanation in vernacular Hinglish for better conceptual clarity.</div></div>', unsafe_allow_html=True)
+        
+        # Slider for Tone Selection
+        tone_style = st.select_slider("Select Explanation Style:", options=["Professional (English)", "Conversational (Hinglish)", "Desi (Bhai Mode)"], value="Desi (Bhai Mode)")
+        
+        if st.button("Generate Walkthrough", key="hinglish", use_container_width=True):
+            if not (err := validate_python_code(st.session_state.current_code)):
+                with st.spinner("Generating Walkthrough..."):
+                    # Dynamic Prompt Selection
+                    if tone_style == "Professional (English)":
+                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT.replace("Hinglish / Desi", "Professional Technical English").replace("Bhai", "Engineer").replace("Desi", "Formal")
+                    elif tone_style == "Conversational (Hinglish)":
+                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT.replace("Desi", "Conversational").replace("Bhai", "Friend")
+                    else:
+                        custom_prompt = PYTHON_TO_HINGLISH_PROMPT # Default Desi
+
+                    st.session_state.hinglish_output = parse_custom_response(call_groq_api(custom_prompt, st.session_state.current_code, model_name=selected_model))
+            else: st.error(err)
+        if st.session_state.hinglish_output:
+            st.info(st.session_state.hinglish_output["description"])
+            st.markdown(f'<div class="desi-box">{st.session_state.hinglish_output["code"]}</div>', unsafe_allow_html=True)
+
+    with tabs[4]: # Simulate
+        st.markdown('<div class="action-card card-simulate"><div class="action-card-title">🔮 Logic Simulation</div><div class="action-card-desc">Execute code in a virtual environment to visualize data flow and state changes without side effects. High-fidelity mental trace.</div></div>', unsafe_allow_html=True)
+        chaos = st.checkbox("🔥 Chaos Mode (Test Edge Cases)", False)
+        if st.button("Run Simulation", key="sim", use_container_width=True):
+            if not (err := validate_python_code(st.session_state.current_code)):
+                prompt = SIMULATOR_PROMPT.replace("SCENARIO:", "SCENARIO: CHAOS_MODE. Find edge cases.") if chaos else SIMULATOR_PROMPT
+                with st.spinner("Simulating execution..."):
+                    st.session_state.simulator_output = parse_custom_response(call_groq_api(prompt, st.session_state.current_code, model_name=selected_model))
+            else: st.error(err)
+        if st.session_state.simulator_output and st.session_state.simulator_output.get("simulation"):
+            sim = st.session_state.simulator_output["simulation"]
+            st.caption(f"Scenario: {sim.get('scenario')} | {sim.get('complexity_note')}")
+            for s in sim.get("trace", []):
+                with st.container():
+                    c1, c2 = st.columns([1, 4])
+                    c1.markdown(f"**Step {s.get('step')}**")
+                    c2.code(s.get('line'), language='python')
+                    st.caption(f"Action: {s.get('action')} | State: {s.get('variables')}")
+                    st.divider()
+            st.success(sim.get("outcome"))
+
+    with tabs[5]: # Debug
+        st.markdown('<div class="action-card card-debug"><div class="action-card-title">🐞 Intelligent Debugger</div><div class="action-card-desc">Heal broken code instantly. Paste an error log or let the AI scan for hidden logic bugs and security leaks.</div></div>', unsafe_allow_html=True)
+        
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            log = st.text_area("Paste Error/Traceback", height=100)
+        with c2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            auto_mode = st.checkbox("🤖 Enable Autonomous Agent\n(Self-Healing Loop)", value=False, help="If enabled, the AI will write, validate, and fix its own code recursively until it passes syntax checks.")
+
+        if st.button("Run Debug Scan", key="debug", use_container_width=True):
+            if not (err := validate_python_code(st.session_state.current_code)):
+                formatted_prompt = DEBUG_PROMPT.replace("{error_log}", log if log else "None")
+                with st.spinner("Diagnosing..."):
+                    if auto_mode:
+                        raw_response = autonomous_fix_loop(formatted_prompt, st.session_state.current_code, "debugging", model_name=selected_model)
+                    else:
+                        raw_response = call_groq_api(formatted_prompt, st.session_state.current_code, model_name=selected_model)
+                    
+                    st.session_state.debug_output = parse_custom_response(raw_response)
+            else: st.error(err)
+        if st.session_state.debug_output:
+            st.warning(st.session_state.debug_output["description"])
+            if st.session_state.debug_output["code"]:
+                st_code_diff(old_string=st.session_state.current_code, new_string=st.session_state.debug_output["code"], language='python')
+
+    with tabs[6]: # Refactor
+        st.markdown('<div class="action-card card-refactor"><div class="action-card-title">🛠️ Code Refactoring</div><div class="action-card-desc">Modernize code for PEP-8 compliance. Inject type hints, Google-style docstrings, and improve modularity.</div></div>', unsafe_allow_html=True)
+        if st.button("Execute Refactor", key="refactor", use_container_width=True):
+            if not (err := validate_python_code(st.session_state.current_code)):
+                with st.spinner("Refactoring..."):
+                    st.session_state.refactor_output = parse_custom_response(call_groq_api(REFACTOR_PROMPT, st.session_state.current_code, model_name=selected_model))
+            else: st.error(err)
+        if st.session_state.refactor_output:
+            st.info(st.session_state.refactor_output["description"])
+            st_code_diff(old_string=st.session_state.current_code, new_string=st.session_state.refactor_output["code"], language='python')
+
+    with tabs[7]: # Optimize
+        st.markdown('<div class="action-card card-optimize"><div class="action-card-title">🚀 Performance Optimization</div><div class="action-card-desc">Identify algorithmic bottlenecks. Replace inefficient loops with high-performance vectorization or better Big-O alternatives.</div></div>', unsafe_allow_html=True)
+        if st.button("Execute Optimize", key="optimize", use_container_width=True):
+            if not (err := validate_python_code(st.session_state.current_code)):
+                with st.spinner("Optimizing..."):
+                    st.session_state.optimize_output = parse_custom_response(call_groq_api(OPTIMIZE_PROMPT, st.session_state.current_code, model_name=selected_model))
+            else: st.error(err)
+        if st.session_state.optimize_output:
+            st.info(st.session_state.optimize_output["description"])
+            st_code_diff(old_string=st.session_state.current_code, new_string=st.session_state.optimize_output["code"], language='python')
+
+    with tabs[8]: # Transpile
+        st.markdown('<div class="action-card card-transpile"><div class="action-card-title">🌐 Code Transpilation</div><div class="action-card-desc">Seamlessly translate Python to production languages like Rust, Go, or TypeScript while maintaining logic parity.</div></div>', unsafe_allow_html=True)
+        lang = st.selectbox("Target Language", ["Rust", "JavaScript", "Go", "C++", "Java", "TypeScript", "Swift", "Kotlin"])
+        if st.button(f"Transpile to {lang}", key="trans", use_container_width=True):
+            if not (err := validate_python_code(st.session_state.current_code)):
+                with st.spinner("Transpiling..."):
+                    st.session_state.transpile_output = parse_custom_response(call_groq_api(f"TARGET LANGUAGE: {lang}\n\n{TRANSPILE_PROMPT}", st.session_state.current_code, model_name=selected_model))
+            else: st.error(err)
+        if st.session_state.transpile_output:
+            if st.session_state.transpile_output["warning"]: st.warning(st.session_state.transpile_output["warning"])
+            st.code(st.session_state.transpile_output["code"], language=lang.lower())

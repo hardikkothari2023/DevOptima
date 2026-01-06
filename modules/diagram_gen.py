@@ -9,7 +9,7 @@ from streamlit_echarts import st_echarts
 from modules.llm_handler import call_groq_api
 from modules.prompt_templates import DIAGRAM_PROMPT, TREE_PROMPT, SEQUENCE_PROMPT
 
-def generate_mermaid_diagram(python_code: str, diagram_type: str = "flowchart") -> str:
+def generate_mermaid_diagram(python_code: str, diagram_type: str = "flowchart", model_name: str = "llama-3.3-70b-versatile") -> str:
     """
     Generates a Mermaid.js diagram syntax.
     diagram_type can be 'flowchart' or 'sequence'.
@@ -18,7 +18,7 @@ def generate_mermaid_diagram(python_code: str, diagram_type: str = "flowchart") 
         return "ERROR: Cannot generate diagram from empty code."
     
     prompt = SEQUENCE_PROMPT if diagram_type == "sequence" else DIAGRAM_PROMPT
-    mermaid_syntax = call_groq_api(prompt, python_code)
+    mermaid_syntax = call_groq_api(prompt, python_code, model_name=model_name)
     return mermaid_syntax
 
 def render_mermaid_diagram(mermaid_code: str):
@@ -31,12 +31,12 @@ def render_mermaid_diagram(mermaid_code: str):
         with st.container(border=True):
             st_mermaid(clean_code, height="600px")
 
-def generate_tree_data(python_code: str) -> dict:
+def generate_tree_data(python_code: str, model_name: str = "llama-3.3-70b-versatile") -> dict:
     """Generates Hierarchical JSON data for the ECharts tree."""
     if not python_code.strip():
         return {"name": "Root", "children": []}
     
-    response = call_groq_api(TREE_PROMPT, python_code)
+    response = call_groq_api(TREE_PROMPT, python_code, model_name=model_name)
     
     try:
         data = {}

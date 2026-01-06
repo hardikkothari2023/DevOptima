@@ -248,3 +248,29 @@ RULES:
 
 Response:
 """
+
+SELF_CORRECTION_PROMPT = f"""
+{_BASE_PROMPT_INSTRUCTION}
+TASK: Fix the Python syntax error in the previous attempt.
+
+PREVIOUS ATTEMPT:
+```python
+{{previous_code}}
+```
+
+ERROR MESSAGE:
+{{error_message}}
+
+INSTRUCTIONS:
+1. Analyze the error message and the code.
+2. Fix the syntax error.
+3. Return the FULL CORRECTED CODE.
+
+IMPORTANT: You must use the EXACT output format below. Do NOT use JSON.
+
+FORMAT:
+---DESCRIPTION---
+(Briefly explain the fix)
+---CODE---
+(The full, corrected Python code)
+"""

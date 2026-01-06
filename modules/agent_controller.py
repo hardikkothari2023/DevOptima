@@ -25,7 +25,7 @@ def parse_code_from_response(response_str: str) -> str:
     
     return code.replace("```python", "").replace("```", "").strip()
 
-def autonomous_fix_loop(initial_prompt: str, user_code: str, usage_description: str = "generating code") -> str:
+def autonomous_fix_loop(initial_prompt: str, user_code: str, usage_description: str = "generating code", model_name: str = "llama-3.3-70b-versatile") -> str:
     """
     Executes a self-healing loop:
     1. Generates code via LLM.
@@ -45,7 +45,7 @@ def autonomous_fix_loop(initial_prompt: str, user_code: str, usage_description: 
         if attempt > 1:
             st.toast(f"⚠️ Attempt {attempt}/{MAX_ATTEMPTS}: Self-correcting syntax error...", icon="🔄")
         
-        response = call_groq_api(current_prompt, user_code)
+        response = call_groq_api(current_prompt, user_code, model_name=model_name)
         last_response = response
         
         # 2. Extract Code for Validation
