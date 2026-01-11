@@ -7,6 +7,9 @@ and quality-control measure before sending code to the LLM.
 """
 
 import ast
+from utils.logger import setup_logger
+
+logger = setup_logger("code_parser")
 
 def validate_python_code(code: str) -> str | None:
     """
@@ -23,6 +26,9 @@ def validate_python_code(code: str) -> str | None:
         ast.parse(code)
         return None  # Code is syntactically valid
     except SyntaxError as e:
-        return f"Syntax Error: {e.msg} on line {e.lineno}"
+        error_msg = f"Syntax Error: {e.msg} on line {e.lineno}"
+        logger.warning(f"Python code validation failed: {error_msg}")
+        return error_msg
     except Exception as e:
+        logger.error(f"Unexpected error in code validation: {e}")
         return f"An unexpected validation error occurred: {e}"

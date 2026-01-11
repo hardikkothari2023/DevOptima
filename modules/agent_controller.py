@@ -8,6 +8,10 @@ import streamlit as st
 from modules.llm_handler import call_groq_api
 from modules.code_parser import validate_python_code
 from modules.prompt_templates import SELF_CORRECTION_PROMPT
+from utils.logger import setup_logger
+
+# Initialize logger
+logger = setup_logger("agent_controller")
 
 MAX_ATTEMPTS = 3
 
@@ -39,11 +43,13 @@ def autonomous_fix_loop(initial_prompt: str, user_code: str, usage_description: 
     
     current_prompt = initial_prompt
     last_response = ""
+    logger.info(f"Starting autonomous fix loop for {usage_description}")
     
     for attempt in range(1, MAX_ATTEMPTS + 1):
         # 1. Generate (or Regenerate)
         if attempt > 1:
             st.toast(f"⚠️ Attempt {attempt}/{MAX_ATTEMPTS}: Self-correcting syntax error...", icon="🔄")
+            logger.info(f"Retrying autonomous fix: Attempt {attempt}/{MAX_ATTEMPTS}")
         
         response = call_groq_api(current_prompt, user_code, model_name=model_name)
         last_response = response
@@ -59,10 +65,11 @@ def autonomous_fix_loop(initial_prompt: str, user_code: str, usage_description: 
             # SUCCESS: Code is valid
             if attempt > 1:
                 st.toast("✅ Self-correction successful!", icon="✨")
+                logger.info(f"Autonomous fix successful on attempt {attempt}")
             return response
             
         # FAILURE: Prepare for next iteration
-        print(f"Validation failed on attempt {attempt}: {error_msg}")
+        logger.warning(f"Validation failed on attempt {attempt}: {error_msg}")
         
         # Update prompt for next loop
         current_prompt = SELF_CORRECTION_PROMPT.replace(

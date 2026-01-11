@@ -7,6 +7,10 @@ import time
 from groq import Groq, APIError
 import streamlit as st
 from dotenv import load_dotenv
+from utils.logger import setup_logger
+
+# Initialize logger for this module
+logger = setup_logger("llm_handler")
 
 # Load environment variables from .env file for local development
 load_dotenv()
@@ -40,9 +44,11 @@ def call_groq_api(system_prompt: str, user_code: str, model_name: str = GROQ_MOD
     """
     client = get_groq_client()
     if not client:
+        logger.error("GROQ_API_KEY not found in secrets or environment.")
         return "ERROR: GROQ_API_KEY not found."
 
     user_prompt = f"USER_CODE:\n```python\n{user_code}\n```"
+    logger.info(f"Calling Groq API with model: {model_name}")
     
     for attempt in range(MAX_RETRIES):
         try:
@@ -56,16 +62,18 @@ def call_groq_api(system_prompt: str, user_code: str, model_name: str = GROQ_MOD
                 max_tokens=4096,
             )
             response_content = chat_completion.choices[0].message.content
+            logger.info(f"Successfully received response from Groq on attempt {attempt + 1}")
             return response_content
             
         except APIError as e:
             error_message = f"Groq API Error on attempt {attempt + 1}: {e}"
-            print(error_message)
+            logger.error(error_message)
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
             else:
                 return f"ERROR: Failed to communicate with Groq API after {MAX_RETRIES} attempts. Last error: {e}"
         except Exception as e:
+            logger.error(f"Unexpected error in call_groq_api: {e}")
             return f"An unexpected error occurred: {e}"
             
     return "ERROR: An unknown error occurred after all retries."

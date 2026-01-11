@@ -8,6 +8,9 @@ from streamlit_mermaid import st_mermaid
 from streamlit_echarts import st_echarts
 from modules.llm_handler import call_groq_api
 from modules.prompt_templates import DIAGRAM_PROMPT, TREE_PROMPT, SEQUENCE_PROMPT
+from utils.logger import setup_logger
+
+logger = setup_logger("diagram_gen")
 
 def generate_mermaid_diagram(python_code: str, diagram_type: str = "flowchart", model_name: str = "llama-3.3-70b-versatile") -> str:
     """
@@ -15,8 +18,10 @@ def generate_mermaid_diagram(python_code: str, diagram_type: str = "flowchart", 
     diagram_type can be 'flowchart' or 'sequence'.
     """
     if not python_code.strip():
+        logger.warning("Attempted to generate Mermaid diagram from empty code.")
         return "ERROR: Cannot generate diagram from empty code."
     
+    logger.info(f"Generating Mermaid {diagram_type} diagram...")
     prompt = SEQUENCE_PROMPT if diagram_type == "sequence" else DIAGRAM_PROMPT
     mermaid_syntax = call_groq_api(prompt, python_code, model_name=model_name)
     return mermaid_syntax
@@ -25,8 +30,10 @@ def render_mermaid_diagram(mermaid_code: str):
     """Renders a Mermaid.js diagram."""
     clean_code = mermaid_code.replace("```mermaid", "").replace("```", "").strip()
     if "ERROR:" in mermaid_code or not clean_code:
+        logger.error(f"Mermaid rendering failed: {mermaid_code}")
         st.error(f"Could not generate the architecture diagram. Details: {mermaid_code}")
     else:
+        logger.info("Rendering Mermaid diagram.")
         st.subheader("Generated Diagram")
         with st.container(border=True):
             st_mermaid(clean_code, height="600px")
@@ -34,8 +41,10 @@ def render_mermaid_diagram(mermaid_code: str):
 def generate_tree_data(python_code: str, model_name: str = "llama-3.3-70b-versatile") -> dict:
     """Generates Hierarchical JSON data for the ECharts tree."""
     if not python_code.strip():
+        logger.warning("Attempted to generate tree data from empty code.")
         return {"name": "Root", "children": []}
     
+    logger.info("Generating hierarchical tree data via LLM...")
     response = call_groq_api(TREE_PROMPT, python_code, model_name=model_name)
     
     try:
@@ -57,9 +66,11 @@ def generate_tree_data(python_code: str, model_name: str = "llama-3.3-70b-versat
                     format_nodes(child)
             return node
 
+        logger.info("Successfully parsed tree JSON data.")
         return format_nodes(data)
 
     except Exception as e:
+        logger.error(f"Tree Data Parsing Error: {e}")
         st.error(f"Tree Data Error: {e}")
         return {"name": "Error Parsing Data", "children": []}
 

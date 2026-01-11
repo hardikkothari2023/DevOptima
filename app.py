@@ -33,6 +33,11 @@ from modules.diagram_gen import generate_mermaid_diagram, render_mermaid_diagram
 from modules.code_parser import validate_python_code
 from utils.example_code import EXAMPLE_CODE
 from utils.style import get_css
+from utils.logger import setup_logger
+
+# Initialize main application logger
+logger = setup_logger("app")
+logger.info("DevOptima Application Starting...")
 
 # --- HELPER FUNCTIONS ---
 def get_system_info() -> str:
@@ -150,6 +155,7 @@ col1, col2 = st.columns((1, 1), gap="large")
 with col1:
     st.markdown("### 💻 Code Workspace")
     if uploaded_file := st.file_uploader("Upload Python Source", type="py"):
+        logger.info(f"New file uploaded: {uploaded_file.name}")
         st.session_state.current_code = uploaded_file.getvalue().decode("utf-8")
     
     # Editor
@@ -174,6 +180,7 @@ with col2:
     with tabs[0]: # Audit
         st.markdown('<div class="action-card card-audit"><div class="action-card-title">🛡️ Code Quality Audit</div><div class="action-card-desc">Deep-scan architecture for security risks, maintainability issues, and technical debt. Generates a comprehensive engineering verdict.</div></div>', unsafe_allow_html=True)
         if st.button("Generate Audit Report", key="audit", use_container_width=True):
+            logger.info("Audit directive triggered.")
             if not (err := validate_python_code(st.session_state.current_code)):
                 with st.spinner("Executing deep scan..."):
                     metrics = get_advanced_metrics(st.session_state.current_code)
@@ -201,6 +208,7 @@ with col2:
                 if f_doc: fixes.append("- Add docstrings/types.")
                 if f_opt: fixes.append("- Optimize logic.")
                 if fixes:
+                    logger.info(f"Applying audit fixes: {', '.join(fixes)}")
                     with st.spinner("Applying fixes..."):
                         st.session_state.fix_output = parse_custom_response(call_groq_api(BATCH_FIX_PROMPT.replace("{selected_fixes}", "\n".join(fixes)), st.session_state.current_code, model_name=selected_model))
             if st.session_state.fix_output:
@@ -213,6 +221,7 @@ with col2:
         viz_type = st.radio("Select View:", ["Flowchart", "Sequence Diagram", "Interactive Code Map"], horizontal=True)
         
         if st.button("Generate Visualization", key="gen_viz", use_container_width=True):
+            logger.info(f"Visualization directive triggered: {viz_type}")
             if not (err := validate_python_code(st.session_state.current_code)):
                 with st.spinner("Analyzing architecture..."):
                     if viz_type == "Interactive Code Map":
@@ -234,6 +243,7 @@ with col2:
 
         # Chat input
         if prompt := st.chat_input("Ask a question about your code..."):
+            logger.info("ASK directive triggered.")
             # Display user message
             with st.chat_message("user"):
                 st.markdown(prompt)
@@ -254,6 +264,7 @@ with col2:
         tone_style = st.select_slider("Select Explanation Style:", options=["Professional (English)", "Conversational (Hinglish)", "Desi (Bhai Mode)"], value="Desi (Bhai Mode)")
         
         if st.button("Generate Walkthrough", key="hinglish", use_container_width=True):
+            logger.info(f"Linguistic directive triggered with tone: {tone_style}")
             if not (err := validate_python_code(st.session_state.current_code)):
                 with st.spinner("Generating Walkthrough..."):
                     # Dynamic Prompt Selection
@@ -274,6 +285,7 @@ with col2:
         st.markdown('<div class="action-card card-simulate"><div class="action-card-title">🔮 Logic Simulation</div><div class="action-card-desc">Execute code in a virtual environment to visualize data flow and state changes without side effects. High-fidelity mental trace.</div></div>', unsafe_allow_html=True)
         chaos = st.checkbox("🔥 Chaos Mode (Test Edge Cases)", False)
         if st.button("Run Simulation", key="sim", use_container_width=True):
+            logger.info(f"Simulate directive triggered (Chaos: {chaos})")
             if not (err := validate_python_code(st.session_state.current_code)):
                 prompt = SIMULATOR_PROMPT.replace("SCENARIO:", "SCENARIO: CHAOS_MODE. Find edge cases.") if chaos else SIMULATOR_PROMPT
                 with st.spinner("Simulating execution..."):
@@ -302,6 +314,7 @@ with col2:
             auto_mode = st.checkbox("🤖 Enable Autonomous Agent\n(Self-Healing Loop)", value=False, help="If enabled, the AI will write, validate, and fix its own code recursively until it passes syntax checks.")
 
         if st.button("Run Debug Scan", key="debug", use_container_width=True):
+            logger.info(f"Debug directive triggered (Autonomous: {auto_mode})")
             if not (err := validate_python_code(st.session_state.current_code)):
                 formatted_prompt = DEBUG_PROMPT.replace("{error_log}", log if log else "None")
                 with st.spinner("Diagnosing..."):
@@ -320,6 +333,7 @@ with col2:
     with tabs[6]: # Refactor
         st.markdown('<div class="action-card card-refactor"><div class="action-card-title">🛠️ Code Refactoring</div><div class="action-card-desc">Modernize code for PEP-8 compliance. Inject type hints, Google-style docstrings, and improve modularity.</div></div>', unsafe_allow_html=True)
         if st.button("Execute Refactor", key="refactor", use_container_width=True):
+            logger.info("Refactor directive triggered.")
             if not (err := validate_python_code(st.session_state.current_code)):
                 with st.spinner("Refactoring..."):
                     st.session_state.refactor_output = parse_custom_response(call_groq_api(REFACTOR_PROMPT, st.session_state.current_code, model_name=selected_model))
@@ -331,6 +345,7 @@ with col2:
     with tabs[7]: # Optimize
         st.markdown('<div class="action-card card-optimize"><div class="action-card-title">🚀 Performance Optimization</div><div class="action-card-desc">Identify algorithmic bottlenecks. Replace inefficient loops with high-performance vectorization or better Big-O alternatives.</div></div>', unsafe_allow_html=True)
         if st.button("Execute Optimize", key="optimize", use_container_width=True):
+            logger.info("Optimize directive triggered.")
             if not (err := validate_python_code(st.session_state.current_code)):
                 with st.spinner("Optimizing..."):
                     st.session_state.optimize_output = parse_custom_response(call_groq_api(OPTIMIZE_PROMPT, st.session_state.current_code, model_name=selected_model))
@@ -343,6 +358,7 @@ with col2:
         st.markdown('<div class="action-card card-transpile"><div class="action-card-title">🌐 Code Transpilation</div><div class="action-card-desc">Seamlessly translate Python to production languages like Rust, Go, or TypeScript while maintaining logic parity.</div></div>', unsafe_allow_html=True)
         lang = st.selectbox("Target Language", ["Rust", "JavaScript", "Go", "C++", "Java", "TypeScript", "Swift", "Kotlin"])
         if st.button(f"Transpile to {lang}", key="trans", use_container_width=True):
+            logger.info(f"Transpile directive triggered: Python to {lang}")
             if not (err := validate_python_code(st.session_state.current_code)):
                 with st.spinner("Transpiling..."):
                     st.session_state.transpile_output = parse_custom_response(call_groq_api(f"TARGET LANGUAGE: {lang}\n\n{TRANSPILE_PROMPT}", st.session_state.current_code, model_name=selected_model))
